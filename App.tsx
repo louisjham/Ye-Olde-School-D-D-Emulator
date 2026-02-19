@@ -26,18 +26,20 @@ const App: React.FC = () => {
   const [isStarted, setIsStarted] = useState(() => {
     return localStorage.getItem('dnd_emulator_v5_started') === 'true';
   });
+  // Fade-in when game UI mounts (after TitlePage exits)
+  const [gameFadeIn, setGameFadeIn] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [diceState, setDiceState] = useState<DiceState>({ rolling: false, value: 0, sides: 20 });
-  
+
   const [setupStep, setSetupStep] = useState<SetupStep>(() => {
-      const saved = localStorage.getItem('dnd_emulator_v5');
-      if (saved) {
-          const parsed = JSON.parse(saved);
-          return (parsed.party && parsed.party.length > 0) ? 'playing' : 'none';
-      }
-      return 'none';
+    const saved = localStorage.getItem('dnd_emulator_v5');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return (parsed.party && parsed.party.length > 0) ? 'playing' : 'none';
+    }
+    return 'none';
   });
 
   const [state, setState] = useState<GameState>(() => {
@@ -94,9 +96,9 @@ const App: React.FC = () => {
     const classes = Object.values(CharClass);
     const charClass = classes[Math.floor(Math.random() * classes.length)];
     const hp = rollDice(CLASS_HIT_DIE[charClass]);
-    const initialGear = charClass === CharClass.FIGHTER ? ['Plate Mail', 'Sword', 'Shield'] : 
-                       charClass === CharClass.CLERIC ? ['Chain Mail', 'Mace', 'Holy Symbol'] :
-                       ['Leather Armor', 'Dagger', 'Large Sack'];
+    const initialGear = charClass === CharClass.FIGHTER ? ['Plate Mail', 'Sword', 'Shield'] :
+      charClass === CharClass.CLERIC ? ['Chain Mail', 'Mace', 'Holy Symbol'] :
+        ['Leather Armor', 'Dagger', 'Large Sack'];
     return {
       id: Math.random().toString(36).substring(2, 11),
       name, class: charClass, level: 1,
@@ -116,52 +118,61 @@ const App: React.FC = () => {
     const names = ['VALERIUS', 'KARA', 'THALOS', 'MYRA'];
     await visualizeRoll(20, rollDice(20));
     const newParty = await Promise.all(names.map(n => generateCharacter(n)));
-    setState(prev => ({ 
-        ...prev, 
-        party: newParty, 
-        activeCharacterId: newParty[0].id,
-        history: [...prev.history, { 
-            type: 'system', 
-            content: `PARTY GENERATED:\n${newParty.map(p => `${p.name} THE ${p.class.toUpperCase()} (HP:${p.hp})`).join('\n')}\n\n>>> NEXT STEP: TYPE [K] TO KEEP THIS PARTY OR [G] TO RE-ROLL.`, 
-            timestamp: Date.now() 
-        }] 
+    setState(prev => ({
+      ...prev,
+      party: newParty,
+      activeCharacterId: newParty[0].id,
+      history: [...prev.history, {
+        type: 'system',
+        content: `PARTY GENERATED:\n${newParty.map(p => `${p.name} THE ${p.class.toUpperCase()} (HP:${p.hp})`).join('\n')}\n\n>>> NEXT STEP: TYPE [K] TO KEEP THIS PARTY OR [G] TO RE-ROLL.`,
+        timestamp: Date.now()
+      }]
     }));
     setSetupStep('generated');
     setLoading(false);
   }, []);
 
   const handleKeepParty = useCallback(() => {
-      setState(prev => ({
-          ...prev,
-          history: [...prev.history, { type: 'system', content: `THE DESTINY OF THESE BRAVE SOULS IS SEALED.\n\n>>> COMMAND: TYPE [S] TO BEGIN THE QUEST.`, timestamp: Date.now() }]
-      }));
-      setSetupStep('confirmed');
+    setState(prev => ({
+      ...prev,
+      history: [...prev.history, { type: 'system', content: `THE DESTINY OF THESE BRAVE SOULS IS SEALED.\n\n>>> COMMAND: TYPE [S] TO BEGIN THE QUEST.`, timestamp: Date.now() }]
+    }));
+    setSetupStep('confirmed');
   }, []);
 
   const handleStartExperience = useCallback(async () => {
-      setSetupStep('playing');
-      setLoading(true);
-      const dmService = new DMService();
-      const introPrompt = `Begin adventure. ${currentModule.hook}`;
-      try {
-          const response = await dmService.getDMResponse(state, currentModule, introPrompt);
-          setLoading(false);
-          setState(prev => ({
-              ...prev,
-              history: [...prev.history, 
-                  { type: 'system', content: `JOURNEYING TO THE BORDERLANDS...`, timestamp: Date.now() },
-                  { type: 'dm', content: response, timestamp: Date.now() }
-              ]
-          }));
-      } catch (err) {
-          setLoading(false);
-      }
+    setSetupStep('playing');
+    setLoading(true);
+    const dmService = new DMService();
+    const introPrompt = `Begin adventure. ${currentModule.hook}`;
+    try {
+      const response = await dmService.getDMResponse(state, currentModule, introPrompt);
+      setLoading(false);
+      setState(prev => ({
+        ...prev,
+        history: [...prev.history,
+        { type: 'system', content: `JOURNEYING TO THE BORDERLANDS...`, timestamp: Date.now() },
+        { type: 'dm', content: response, timestamp: Date.now() }
+        ]
+      }));
+    } catch (err) {
+      setLoading(false);
+    }
   }, [state, currentModule]);
 
   const handleLaunch = (moduleId: string) => {
-    setIsStarted(true);
-    localStorage.setItem('dnd_emulator_v5_started', 'true');
-    setState(prev => ({ ...prev, currentModuleId: moduleId }));
+    // Stop title theme audio in case it's still playing
+    audioService.stopTheme();
+    // Small delay so TitlePage's own exit-fade (700ms) can complete
+    setTimeout(() => {
+      setIsStarted(true);
+      localStorage.setItem('dnd_emulator_v5_started', 'true');
+      setState(prev => ({ ...prev, currentModuleId: moduleId }));
+      // Trigger game fade-in on next frame
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => setGameFadeIn(true))
+      );
+    }, 750);
   };
 
   const handleCommand = async (e: React.FormEvent) => {
@@ -170,10 +181,10 @@ const App: React.FC = () => {
     if (!val || loading || diceState.rolling) return;
 
     if (setupStep !== 'playing') {
-        if ((setupStep === 'none' || setupStep === 'generated') && val === 'G') { setInput(''); handleGenerateParty(); }
-        if (setupStep === 'generated' && val === 'K') { setInput(''); handleKeepParty(); }
-        if (setupStep === 'confirmed' && val === 'S') { setInput(''); handleStartExperience(); }
-        return;
+      if ((setupStep === 'none' || setupStep === 'generated') && val === 'G') { setInput(''); handleGenerateParty(); }
+      if (setupStep === 'generated' && val === 'K') { setInput(''); handleKeepParty(); }
+      if (setupStep === 'confirmed' && val === 'S') { setInput(''); handleStartExperience(); }
+      return;
     }
 
     const playerInput = input.trim();
@@ -208,45 +219,51 @@ const App: React.FC = () => {
   if (!isStarted) return <TitlePage onStart={handleLaunch} />;
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-screen bg-[#050505] overflow-hidden p-2 lg:p-4 gap-4 pixel-font selection:bg-[#d4af37] selection:text-black">
+    <div
+      className="flex flex-col lg:flex-row h-screen w-screen bg-[#050505] overflow-hidden p-2 lg:p-4 gap-4 pixel-font selection:bg-[#d4af37] selection:text-black"
+      style={{
+        opacity: gameFadeIn ? 1 : 0,
+        transition: 'opacity 0.6s ease-in',
+      }}
+    >
       {diceState.rolling && (
-        <DiceVisualizer 
-          value={diceState.value} 
-          sides={diceState.sides} 
-          onComplete={() => (window as any).diceComplete?.()} 
+        <DiceVisualizer
+          value={diceState.value}
+          sides={diceState.sides}
+          onComplete={() => (window as any).diceComplete?.()}
         />
       )}
 
       {/* Main Narrative Area (Centerpiece) */}
       <div className="flex-[3] flex flex-col beveled-border !border-[#000080] !outline-[#d4af37] bg-[#fdf5e6] shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden min-h-0 relative z-10">
-        
+
         {/* Top Header branding */}
         <div className="bg-[#000080] border-b-2 border-[#d4af37] p-3 lg:p-4 flex justify-between items-center shrink-0 z-30">
-            <div className="flex items-center gap-4 lg:gap-8 px-2">
-                <span className="text-[10px] lg:text-[14px] text-[#d4af37] tracking-[0.3em] font-bold drop-shadow-[0_2px_0_#000] uppercase italic">
-                  ADVANCED DUNGEONS & DRAGONS®
-                </span>
-                <div className="h-6 w-px bg-white/20 hidden lg:block" />
-                <span className="text-white/60 text-[8px] lg:text-[11px] font-bold">TURN: {state.turnCount}</span>
-            </div>
-            <div className="flex items-center gap-4">
-                <span className="text-[8px] lg:text-[10px] text-white/40 hidden lg:inline tracking-widest">{currentModule.name.toUpperCase()}</span>
-                <button 
-                    onClick={() => { localStorage.removeItem('dnd_emulator_v5_started'); window.location.reload(); }}
-                    className="text-[8px] lg:text-[10px] text-white/50 hover:text-white border border-white/20 px-4 py-1.5 bg-black/40 hover:bg-red-900/40 transition-colors"
-                >
-                  [EXIT]
-                </button>
-            </div>
+          <div className="flex items-center gap-4 lg:gap-8 px-2">
+            <span className="text-[10px] lg:text-[14px] text-[#d4af37] tracking-[0.3em] font-bold drop-shadow-[0_2px_0_#000] uppercase italic">
+              ADVANCED DUNGEONS & DRAGONS®
+            </span>
+            <div className="h-6 w-px bg-white/20 hidden lg:block" />
+            <span className="text-white/60 text-[8px] lg:text-[11px] font-bold">TURN: {state.turnCount}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-[8px] lg:text-[10px] text-white/40 hidden lg:inline tracking-widest">{currentModule.name.toUpperCase()}</span>
+            <button
+              onClick={() => { localStorage.removeItem('dnd_emulator_v5_started'); window.location.reload(); }}
+              className="text-[8px] lg:text-[10px] text-white/50 hover:text-white border border-white/20 px-4 py-1.5 bg-black/40 hover:bg-red-900/40 transition-colors"
+            >
+              [EXIT]
+            </button>
+          </div>
         </div>
 
         {/* Narrative Engine (Adventure Chronicle) */}
         <div className="flex-grow min-h-0 flex flex-col relative overflow-hidden">
           <Terminal messages={state.history} />
-          
+
           {/* Fading bottom context hint */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent h-16 pointer-events-none z-10 opacity-60" />
-          
+
           {/* Explicit Guidance Bar */}
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[#000080]/90 text-[#d4af37] py-2 px-8 text-[9px] lg:text-[11px] border-2 border-[#d4af37] z-20 shadow-[0_5px_15px_rgba(0,0,0,0.8)] backdrop-blur-sm min-w-[300px] text-center">
             <span className="animate-pulse tracking-wide font-bold">{getActionHint()}</span>
@@ -279,14 +296,14 @@ const App: React.FC = () => {
           <div className="text-[7px] text-[#d4af37] mb-1 opacity-60 tracking-[0.3em] uppercase">SIGHTING BUFFER</div>
           <VisualFeed location={state.location} inCombat={state.inCombat} />
         </div>
-        
+
         {/* Tactical & Personal Status */}
         <div className="flex-grow overflow-y-auto terminal-scroll pr-2 space-y-4 pb-6">
-          <Sidebar state={state} onSelect={(id) => setState(prev => ({...prev, activeCharacterId: id}))} />
-          
+          <Sidebar state={state} onSelect={(id) => setState(prev => ({ ...prev, activeCharacterId: id }))} />
+
           <div className="space-y-1">
             <div className="text-[7px] text-[#d4af37] opacity-60 tracking-[0.3em] uppercase">MAP CHRONICLE</div>
-            <Mapper grid={state.mapData} onCellClick={() => {}} />
+            <Mapper grid={state.mapData} onCellClick={() => { }} />
           </div>
         </div>
       </div>

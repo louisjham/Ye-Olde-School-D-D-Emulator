@@ -40,13 +40,12 @@ const TypewriterText: React.FC<{ text: string; type: string; isFirstMessage: boo
   }, [text, isFirstMessage]);
 
   return (
-    <div className={`whitespace-pre-wrap pixel-font text-[12px] lg:text-[15px] line-height-pixel mb-10 tracking-wide transition-opacity duration-500 ${
-      type === 'player' ? 'text-[#8b4513] font-bold border-b-2 border-[#8b4513]/10 pb-4' : 
-      type === 'system' ? 'text-blue-900 border-l-8 border-blue-900 pl-6 py-4 bg-blue-900/5 my-6' : 
-      type === 'dice' ? 'bg-black/10 p-6 border-2 border-black/20 text-gray-700 text-[11px] italic mb-8' :
-      'text-black'
-    }`}>
-      {type === 'player' && <span className="mr-4 text-[#d4af37] font-black">>>></span>}
+    <div className={`whitespace-pre-wrap pixel-font text-[12px] lg:text-[15px] line-height-pixel mb-10 tracking-wide transition-opacity duration-500 ${type === 'player' ? 'text-[#8b4513] font-bold border-b-2 border-[#8b4513]/10 pb-4' :
+        type === 'system' ? 'text-blue-900 border-l-8 border-blue-900 pl-6 py-4 bg-blue-900/5 my-6' :
+          type === 'dice' ? 'bg-black/10 p-6 border-2 border-black/20 text-gray-700 text-[11px] italic mb-8' :
+            'text-black'
+      }`}>
+      {type === 'player' && <span className="mr-4 text-[#d4af37] font-black">{'>>>'}</span>}
       {displayed}
       {!isDone && <span className="inline-block w-4 h-5 bg-black/60 ml-2 align-middle animate-pulse" />}
     </div>
@@ -66,8 +65,8 @@ export const Terminal: React.FC<TerminalProps> = ({ messages }) => {
     <div className="relative flex-grow overflow-hidden flex flex-col bg-[#fdf5e6]">
       {/* Texture Overlay for Terminal */}
       <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')] z-10" />
-      
-      <div 
+
+      <div
         ref={scrollRef}
         className="flex-grow p-10 lg:p-14 overflow-y-auto terminal-scroll scroll-smooth relative z-0"
       >
@@ -76,7 +75,7 @@ export const Terminal: React.FC<TerminalProps> = ({ messages }) => {
             --- ADVENTURE CHRONICLE ---
           </h2>
         </div>
-        
+
         {messages.map((msg, i) => {
           const isLast = i === messages.length - 1;
           const isFirstMessage = i === 0;
@@ -84,28 +83,27 @@ export const Terminal: React.FC<TerminalProps> = ({ messages }) => {
 
           if (useTypewriter) {
             return (
-              <TypewriterText 
-                key={i + msg.timestamp} 
-                text={msg.content} 
-                type={msg.type} 
-                isFirstMessage={isFirstMessage} 
+              <TypewriterText
+                key={i + msg.timestamp}
+                text={msg.content}
+                type={msg.type}
+                isFirstMessage={isFirstMessage}
               />
             );
           }
 
           return (
-            <div key={i} className={`whitespace-pre-wrap pixel-font text-[12px] lg:text-[15px] line-height-pixel mb-10 tracking-wide ${
-              msg.type === 'player' ? 'text-[#8b4513] font-bold border-b-2 border-[#8b4513]/10 pb-4' : 
-              msg.type === 'system' ? 'text-blue-900 border-l-8 border-blue-900 pl-6 py-4 bg-blue-900/5 my-6' : 
-              msg.type === 'dice' ? 'bg-black/10 p-6 border-2 border-black/20 text-gray-700 text-[11px] italic mb-8' :
-              'text-black'
-            }`}>
-              {msg.type === 'player' && <span className="mr-4 text-[#d4af37] font-black">>>></span>}
+            <div key={i} className={`whitespace-pre-wrap pixel-font text-[12px] lg:text-[15px] line-height-pixel mb-10 tracking-wide ${msg.type === 'player' ? 'text-[#8b4513] font-bold border-b-2 border-[#8b4513]/10 pb-4' :
+                msg.type === 'system' ? 'text-blue-900 border-l-8 border-blue-900 pl-6 py-4 bg-blue-900/5 my-6' :
+                  msg.type === 'dice' ? 'bg-black/10 p-6 border-2 border-black/20 text-gray-700 text-[11px] italic mb-8' :
+                    'text-black'
+              }`}>
+              {msg.type === 'player' && <span className="mr-4 text-[#d4af37] font-black">{'>>>'}</span>}
               {msg.content}
             </div>
           );
         })}
-        
+
         {/* Spacer for bottom hint overlay */}
         <div className="h-32 shrink-0" />
       </div>
