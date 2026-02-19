@@ -15,6 +15,21 @@ export enum CharClass {
   THIEF = 'Thief'
 }
 
+export enum CombatPhase {
+  NONE = 'NONE',
+  SURPRISE = 'SURPRISE',
+  INITIATIVE = 'INITIATIVE',
+  PARTY_TURN = 'PARTY_TURN',
+  MONSTER_TURN = 'MONSTER_TURN'
+}
+
+export interface CombatState {
+  phase: CombatPhase;
+  round: number;
+  initiativeSide: 'party' | 'monsters' | 'none';
+  surprise: { party: boolean; monsters: boolean };
+}
+
 export interface SavingThrows {
   poison: number;
   wands: number;
@@ -75,6 +90,7 @@ export interface GameState {
   gold: number;
   visitedLocations: string[];
   inCombat: boolean;
+  combatState: CombatState;
   mapData: string[][]; // 20x20 ASCII grid
   turnCount: number;
 }

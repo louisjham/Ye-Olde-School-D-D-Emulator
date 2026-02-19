@@ -6,6 +6,25 @@ export const MODULES_REGISTRY = {
   [B2_MODULE.id]: B2_MODULE
 };
 
+export const HISTORY_CONTEXT = `
+ADVANCED DUNGEONS & DRAGONS (1ST EDITION) was forged in the late 1970s by Gary Gygax. 
+Unlike modern iterations that emphasize "character builds" and superheroic resilience, 1st Edition is a game of resource management, caution, and environmental lethality.
+
+KEY DIFFERENCES:
+- DESCENDING AC: Armor Class starts at 10 (unarmored) and goes down. 0 is great, -10 is godly.
+- THAC0: "To Hit Armor Class 0". The mathematical foundation of combat resolution.
+- DEADLY AT ZERO: When your HP hits 0, you are dead. No "death saves" in the core rules.
+- THE DM IS LAW: Rules are frameworks for the Dungeon Master, not rigid contracts.
+- EXPERIENCE: Gold is the primary source of XP. Combat is often a failure of planning.
+`;
+
+export const GAMEPLAY_GUIDE = `
+1. GATHER YOUR PARTY: Roll for attributes and select your class. 
+2. EXPLORE: Use natural language to investigate rooms, search for traps, and move.
+3. SURVIVE: Combat is tactical and turn-based. Check morale, use initiative, and keep your distance.
+4. LOOT: Secure treasure and return it to the Keep to gain levels.
+`;
+
 export const XP_TABLES: Record<CharClass, number[]> = {
   [CharClass.FIGHTER]: [0, 2000, 4000, 8000],
   [CharClass.CLERIC]: [0, 1500, 3000, 6000],
@@ -20,7 +39,7 @@ RULES: ADVANCED 1ST ED PROTOCOLS.
 MORALE: ENABLED (2d6 CHECK).
 PERMADEATH: ENABLED.
 
-COMMAND: 'GENERATE PARTY' TO START.`;
+COMMAND: 'G' TO GENERATE PARTY.`;
 
 export const LOADING_MESSAGES = [
   "SIMULATING D20 VECTOR...",

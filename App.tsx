@@ -4,9 +4,10 @@ import { Terminal } from './components/Terminal';
 import { Sidebar } from './components/Sidebar';
 import { Mapper } from './components/Mapper';
 import { VisualFeed } from './components/VisualFeed';
+import { TitlePage } from './components/TitlePage';
 import { DMService } from './services/geminiService';
 import { audioService } from './services/audioService';
-import { GameState, GameMessage, Character, CharClass, AbilityScores, ModuleData } from './types';
+import { GameState, GameMessage, Character, CharClass, AbilityScores, ModuleData, CombatPhase, CombatState } from './types';
 import { MODULES_REGISTRY, INITIAL_DM_MESSAGE, BASE_THAC0, CLASS_HIT_DIE, SAVING_THROWS_1ST, THIEF_SKILLS_1ST, DICE_ART, ITEM_WEIGHTS, XP_TABLES, LOADING_MESSAGES } from './constants';
 import { B2_MODULE } from './modules/b2Data';
 
@@ -15,6 +16,9 @@ const createEmptyMap = () => Array(20).fill(null).map(() => Array(20).fill(' '))
 type SetupStep = 'none' | 'generated' | 'confirmed' | 'playing';
 
 const App: React.FC = () => {
+  const [isStarted, setIsStarted] = useState(() => {
+    return localStorage.getItem('dnd_emulator_v5_started') === 'true';
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
@@ -37,10 +41,11 @@ const App: React.FC = () => {
       location: B2_MODULE.startLocation,
       party: [],
       activeCharacterId: null,
-      history: [{ type: 'dm', content: INITIAL_DM_MESSAGE(B2_MODULE.name) + "\n\nPRESS 'G' TO GENERATE A NEW PARTY.", timestamp: Date.now() }],
+      history: [{ type: 'dm', content: INITIAL_DM_MESSAGE(B2_MODULE.name), timestamp: Date.now() }],
       gold: 150,
       visitedLocations: [B2_MODULE.startLocation],
       inCombat: false,
+      combatState: { phase: CombatPhase.NONE, round: 0, initiativeSide: 'none', surprise: { party: false, monsters: false } },
       mapData: createEmptyMap(),
       turnCount: 0
     };
@@ -48,24 +53,11 @@ const App: React.FC = () => {
 
   const currentModule: ModuleData = MODULES_REGISTRY[state.currentModuleId];
 
-  // Auto-focus input
   useEffect(() => {
-    if (!loading && inputRef.current) {
+    if (isStarted && !loading && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [loading, setupStep]);
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | undefined;
-    if (loading) {
-      interval = setInterval(() => {
-        setLoadingMsg(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
-      }, 1500);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [loading]);
+  }, [isStarted, loading, setupStep, state.combatState.phase]);
 
   const rollDice = (sides: number, count: number = 1): number => {
     audioService.playDiceRoll();
@@ -104,39 +96,16 @@ const App: React.FC = () => {
     };
   };
 
-  const calculateDifficulty = (party: Character[]) => {
-      const avgHP = party.reduce((sum, c) => sum + c.maxHp, 0) / party.length;
-      const hasCleric = party.some(c => c.class === CharClass.CLERIC);
-      const avgStr = party.reduce((sum, c) => sum + c.stats.STR, 0) / party.length;
-
-      if (avgHP < 4 || !hasCleric) return "LETHAL (High fatality risk)";
-      if (avgStr > 13 && hasCleric) return "MODERATE (Standard challenge)";
-      return "CHALLENGING (Caution advised)";
-  };
-
-  const getPartyDescription = (party: Character[]) => {
-      const classes = party.map(c => c.class);
-      const fighters = classes.filter(c => c === CharClass.FIGHTER).length;
-      const mages = classes.filter(c => c === CharClass.MAGIC_USER).length;
-      const clerics = classes.filter(c => c === CharClass.CLERIC).length;
-      const thieves = classes.filter(c => c === CharClass.THIEF).length;
-
-      return `Party consists of ${fighters} Fighter(s), ${clerics} Cleric(s), ${mages} Magic-User(s), and ${thieves} Thief/Thieves.`;
-  };
-
   const handleGenerateParty = useCallback(() => {
     const names = ['THORIN', 'ELSPETH', 'SILAS', 'MORG'];
     const newParty = names.map(n => generateCharacter(n));
-    const desc = getPartyDescription(newParty);
-    const diff = calculateDifficulty(newParty);
-
     setState(prev => ({ 
         ...prev, 
         party: newParty, 
         activeCharacterId: newParty[0].id,
         history: [...prev.history, { 
             type: 'system', 
-            content: `\nNEW PARTY ASSEMBLED:\n${newParty.map(p => `${p.name} (${p.class} HP:${p.hp})`).join('\n')}\n\nSUMMARY: ${desc}\nESTIMATED DIFFICULTY: ${diff}\n\nPRESS 'G' TO RE-ROLL OR 'K' TO KEEP THIS PARTY.`, 
+            content: `\nNEW PARTY ASSEMBLED:\n${newParty.map(p => `${p.name} (${p.class} HP:${p.hp})`).join('\n')}\n\nPRESS 'G' TO RE-ROLL OR 'K' TO KEEP THIS PARTY.`, 
             timestamp: Date.now() 
         }] 
     }));
@@ -146,11 +115,7 @@ const App: React.FC = () => {
   const handleKeepParty = useCallback(() => {
       setState(prev => ({
           ...prev,
-          history: [...prev.history, { 
-              type: 'system', 
-              content: `\nPARTY DATA LOCKED.\n\nPRESS 'S' TO START THE EXPERIENCE.`, 
-              timestamp: Date.now() 
-          }]
+          history: [...prev.history, { type: 'system', content: `\nPARTY DATA LOCKED.\n\nPRESS 'S' TO START.`, timestamp: Date.now() }]
       }));
       setSetupStep('confirmed');
   }, []);
@@ -158,46 +123,28 @@ const App: React.FC = () => {
   const handleStartExperience = useCallback(async () => {
       setSetupStep('playing');
       setLoading(true);
-      
       const dmService = new DMService();
-      // Start at the module hook or starting location
-      const introPrompt = `You are starting the adventure. Describe the arrival at ${currentModule.startLocation} and set the scene based on the hook: "${currentModule.hook}"`;
-      
+      const introPrompt = `You are starting the adventure. Describe arrival at ${currentModule.startLocation} based on the hook: "${currentModule.hook}"`;
       try {
           const response = await dmService.getDMResponse(state, currentModule, introPrompt);
           setLoading(false);
           setState(prev => ({
               ...prev,
               history: [...prev.history, 
-                  { type: 'system', content: `\nINITIALIZING MODULE B2: THE KEEP ON THE BORDERLANDS...\nENVIRONMENTAL SENSORS ONLINE.`, timestamp: Date.now() },
+                  { type: 'system', content: `\nINITIALIZING MODULE B2...\nENVIRONMENTAL SENSORS ONLINE.`, timestamp: Date.now() },
                   { type: 'dm', content: response, timestamp: Date.now() }
               ]
           }));
       } catch (err) {
           setLoading(false);
-          setState(prev => ({ ...prev, history: [...prev.history, { type: 'system', content: "FATAL INTERFACE LOSS DURING INTRO.", timestamp: Date.now() }] }));
       }
   }, [state, currentModule]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if (loading) return;
-        const key = e.key.toUpperCase();
-        
-        if (setupStep === 'none' && key === 'G') {
-            e.preventDefault();
-            handleGenerateParty();
-        } else if (setupStep === 'generated') {
-            if (key === 'G') { e.preventDefault(); handleGenerateParty(); }
-            if (key === 'K') { e.preventDefault(); handleKeepParty(); }
-        } else if (setupStep === 'confirmed' && key === 'S') {
-            e.preventDefault(); handleStartExperience();
-        }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setupStep, loading, handleGenerateParty, handleKeepParty, handleStartExperience]);
+  const handleLaunch = (moduleId: string) => {
+    setIsStarted(true);
+    localStorage.setItem('dnd_emulator_v5_started', 'true');
+    setState(prev => ({ ...prev, currentModuleId: moduleId }));
+  };
 
   const awardXP = (amount: number) => {
     setState(prev => ({
@@ -205,11 +152,9 @@ const App: React.FC = () => {
         party: prev.party.map(c => {
             const newXP = c.xp + amount;
             const table = XP_TABLES[c.class];
-            let newLevel = c.level;
             if (newXP >= table[c.level]) {
-                newLevel += 1;
                 const bonusHP = rollDice(CLASS_HIT_DIE[c.class]);
-                return { ...c, xp: newXP, level: newLevel, hp: c.hp + bonusHP, maxHp: c.maxHp + bonusHP };
+                return { ...c, xp: newXP, level: c.level + 1, hp: c.hp + bonusHP, maxHp: c.maxHp + bonusHP };
             }
             return { ...c, xp: newXP };
         })
@@ -226,55 +171,130 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, mapData: newMap }));
   };
 
+  const runCombatPhase = async (manualInput?: string) => {
+      const { phase, round, initiativeSide, surprise } = state.combatState;
+      let nextPhase = phase;
+      let nextRound = round;
+      let nextInit = initiativeSide;
+      let nextSurprise = surprise;
+
+      if (phase === CombatPhase.SURPRISE) {
+          const partyRoll = rollDice(6);
+          const monsterRoll = rollDice(6);
+          nextSurprise = { party: partyRoll <= 2, monsters: monsterRoll <= 2 };
+          
+          let msg = `--- SURPRISE CHECK (1-2 ON 1D6) ---\nPARTY ROLL: ${partyRoll} | MONSTER ROLL: ${monsterRoll}\n`;
+          if (nextSurprise.party && nextSurprise.monsters) msg += "BOTH SIDES ARE SURPRISED. A STALEMATE UNTIL FOCUS RETURNS.";
+          else if (nextSurprise.party) msg += "THE PARTY IS SURPRISED! MONSTERS GET THE UPPER HAND.";
+          else if (nextSurprise.monsters) msg += "THE MONSTERS ARE SURPRISED! THE PARTY GAINS AN OPENING.";
+          else msg += "NO SURPRISE. PREPARE FOR INITIATIVE.";
+          
+          setState(prev => ({ 
+              ...prev, 
+              history: [...prev.history, { type: 'system', content: msg, timestamp: Date.now() }], 
+              combatState: { ...prev.combatState, surprise: nextSurprise, phase: CombatPhase.INITIATIVE } 
+          }));
+          return;
+      }
+
+      if (phase === CombatPhase.INITIATIVE) {
+          const partyRoll = rollDice(6);
+          const monsterRoll = rollDice(6);
+          nextInit = partyRoll >= monsterRoll ? 'party' : 'monsters';
+          nextPhase = nextInit === 'party' ? CombatPhase.PARTY_TURN : CombatPhase.MONSTER_TURN;
+          nextRound++;
+          
+          let msg = `--- ROUND ${nextRound} INITIATIVE (1D6) ---\nPARTY: ${partyRoll} | MONSTERS: ${monsterRoll}\n${nextInit.toUpperCase()} GOES FIRST.`;
+          setState(prev => ({ 
+              ...prev, 
+              history: [...prev.history, { type: 'system', content: msg, timestamp: Date.now() }], 
+              combatState: { ...prev.combatState, phase: nextPhase, round: nextRound, initiativeSide: nextInit } 
+          }));
+          return;
+      }
+
+      setLoading(true);
+      const dmService = new DMService();
+      try {
+          const currentInstruction = phase === CombatPhase.PARTY_TURN 
+            ? (manualInput || "The party takes action.")
+            : "The monsters take their turn. Roll attacks and resolve damage based on 1e rules.";
+
+          const response = await dmService.getDMResponse(state, currentModule, currentInstruction);
+          setLoading(false);
+          
+          const lowerRes = response.toLowerCase();
+          const combatEnded = lowerRes.includes("combat ends") || lowerRes.includes("flee") || lowerRes.includes("victory") || lowerRes.includes("all monsters are dead");
+
+          if (combatEnded) {
+              setState(prev => ({ 
+                  ...prev, 
+                  inCombat: false, 
+                  combatState: { ...prev.combatState, phase: CombatPhase.NONE }, 
+                  history: [...prev.history, { type: 'dm', content: response, timestamp: Date.now() }] 
+              }));
+              return;
+          }
+
+          let finalPhase = phase;
+          if (phase === CombatPhase.PARTY_TURN) {
+              finalPhase = nextInit === 'party' ? CombatPhase.MONSTER_TURN : CombatPhase.INITIATIVE;
+          } else if (phase === CombatPhase.MONSTER_TURN) {
+              finalPhase = nextInit === 'monsters' ? CombatPhase.PARTY_TURN : CombatPhase.INITIATIVE;
+          }
+
+          setState(prev => ({ 
+              ...prev, 
+              combatState: { ...prev.combatState, phase: finalPhase },
+              history: [...prev.history, { type: 'dm', content: response, timestamp: Date.now() }] 
+          }));
+      } catch (e) {
+          setLoading(false);
+          setState(prev => ({ ...prev, history: [...prev.history, { type: 'system', content: "COMBAT INTERFACE TIMEOUT.", timestamp: Date.now() }] }));
+      }
+  };
+
   const handleCommand = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = input.trim().toUpperCase();
     if (!val || loading) return;
 
-    if (setupStep === 'none' && val === 'G') {
-        setInput('');
-        handleGenerateParty();
+    if (setupStep !== 'playing') {
+        if (setupStep === 'none' && val === 'G') { setInput(''); handleGenerateParty(); }
+        if (setupStep === 'generated' && val === 'G') { setInput(''); handleGenerateParty(); }
+        if (setupStep === 'generated' && val === 'K') { setInput(''); handleKeepParty(); }
+        if (setupStep === 'confirmed' && val === 'S') { setInput(''); handleStartExperience(); }
         return;
     }
-    if (setupStep === 'generated') {
-        if (val === 'G') { setInput(''); handleGenerateParty(); return; }
-        if (val === 'K') { setInput(''); handleKeepParty(); return; }
-    }
-    if (setupStep === 'confirmed' && val === 'S') {
-        setInput('');
-        handleStartExperience();
-        return;
-    }
-
-    if (setupStep !== 'playing') return;
 
     const playerInput = input.trim();
     const cmd = playerInput.toUpperCase();
-    const newHistory = [...state.history, { type: 'player', content: playerInput, timestamp: Date.now() } as GameMessage];
-    
     setInput('');
-    setState(prev => ({ ...prev, history: newHistory, turnCount: prev.turnCount + 1 }));
 
-    if (cmd.startsWith('SELECT ')) {
-        const name = cmd.replace('SELECT ', '').trim();
-        const found = state.party.find(p => p.name.toUpperCase() === name);
-        if (found) {
-            setState(prev => ({ ...prev, activeCharacterId: found.id }));
-            return;
-        }
+    if (cmd === 'RESET') { 
+      localStorage.removeItem('dnd_emulator_v5'); 
+      localStorage.removeItem('dnd_emulator_v5_started');
+      window.location.reload(); 
+      return; 
     }
-
     if (cmd.startsWith('ROLL')) {
       const sides = parseInt(cmd.split(' ')[1]) || 20;
       const res = rollDice(sides);
-      const art = DICE_ART[sides] || DICE_ART[20];
-      setState(prev => ({ ...prev, history: [...newHistory, { type: 'dice', content: art.join('\n') + `\nRESULT: ${res}`, timestamp: Date.now() }] }));
+      setState(prev => ({ ...prev, history: [...prev.history, { type: 'dice', content: DICE_ART[sides]?.join('\n') || `ROLL D${sides}: ${res}`, timestamp: Date.now() }] }));
       return;
     }
 
-    if (cmd === 'RESET') {
-        localStorage.removeItem('dnd_emulator_v5');
-        window.location.reload();
+    setState(prev => ({ ...prev, history: [...prev.history, { type: 'player', content: playerInput, timestamp: Date.now() }], turnCount: prev.turnCount + 1 }));
+
+    if (state.inCombat) {
+        if (state.combatState.phase === CombatPhase.PARTY_TURN) {
+            runCombatPhase(playerInput);
+        } else {
+            setState(prev => ({ 
+                ...prev, 
+                history: [...prev.history, { type: 'system', content: `WAITING FOR ${state.combatState.phase.replace('_', ' ')} TO COMPLETE.`, timestamp: Date.now() }] 
+            }));
+        }
         return;
     }
 
@@ -284,52 +304,64 @@ const App: React.FC = () => {
       const dmResponse = await dmService.getDMResponse(state, currentModule, playerInput);
       setLoading(false);
       
-      let newLoc = state.location;
-      for (const locName of Object.keys(currentModule.locations)) {
-        if (dmResponse.toLowerCase().includes(locName.toLowerCase())) {
-          newLoc = locName;
-          break;
-        }
-      }
-
-      if (dmResponse.toLowerCase().includes('initiative') || dmResponse.toLowerCase().includes('attacks')) {
+      let inCombat = state.inCombat;
+      let combatState = state.combatState;
+      
+      if (!inCombat && (dmResponse.toLowerCase().includes('initiative') || dmResponse.toLowerCase().includes('attacks') || dmResponse.toLowerCase().includes('encounter'))) {
           audioService.playCombatStab();
-          setState(prev => ({ ...prev, inCombat: true }));
-      } else if (dmResponse.toLowerCase().includes('flee') || dmResponse.toLowerCase().includes('retreats')) {
-          audioService.playFlee();
-          setState(prev => ({ ...prev, inCombat: false }));
-      } else {
-          setState(prev => ({ ...prev, inCombat: false }));
+          inCombat = true;
+          combatState = { ...combatState, phase: CombatPhase.SURPRISE, round: 0 };
       }
-
-      const xpMatch = dmResponse.match(/(\d+)\s*XP/i);
-      if (xpMatch) awardXP(parseInt(xpMatch[1]));
 
       setState(prev => ({
         ...prev,
-        location: newLoc,
+        inCombat,
+        combatState,
         history: [...prev.history, { type: 'dm', content: dmResponse, timestamp: Date.now() }]
       }));
     } catch (err) {
       setLoading(false);
-      setState(prev => ({ ...prev, history: [...newHistory, { type: 'system', content: "FATAL INTERFACE LOSS.", timestamp: Date.now() }] }));
     }
   };
 
   useEffect(() => {
-    localStorage.setItem('dnd_emulator_v5', JSON.stringify(state));
-  }, [state]);
+    if (isStarted) {
+      localStorage.setItem('dnd_emulator_v5', JSON.stringify(state));
+    }
+  }, [state, isStarted]);
+
+  useEffect(() => {
+      const { phase } = state.combatState;
+      if (state.inCombat && (phase === CombatPhase.SURPRISE || phase === CombatPhase.INITIATIVE || phase === CombatPhase.MONSTER_TURN)) {
+          if (!loading) {
+              const timer = setTimeout(() => runCombatPhase(), 1200);
+              return () => clearTimeout(timer);
+          }
+      }
+  }, [state.inCombat, state.combatState.phase, loading]);
+
+  if (!isStarted) {
+    return <TitlePage onStart={handleLaunch} />;
+  }
 
   return (
     <div className="flex flex-col lg:flex-row h-screen w-screen bg-black text-[#00ff00] overflow-hidden p-2 lg:p-4 gap-4 font-mono">
       <div className="flex-grow flex flex-col border-2 border-[#00ff00] bg-black relative shadow-[0_0_40px_rgba(0,255,0,0.2)]">
         <div className="bg-[#00ff00] text-black px-2 py-1 flex justify-between items-center font-bold text-xs">
           <div className="flex items-center gap-4">
-            <span className="animate-pulse">● FEED: ONLINE</span>
+            <span className="animate-pulse">● {state.inCombat ? `COMBAT: ROUND ${state.combatState.round}` : 'FEED: EXPLORATION'}</span>
             <span>T:{state.turnCount}</span>
             <span>LOC: {state.location.toUpperCase()}</span>
           </div>
-          <div>{loading ? loadingMsg : (setupStep === 'playing' ? "READY" : "SYSTEM INITIALIZATION")}</div>
+          <div className="flex items-center gap-4">
+            <button 
+                onClick={() => { localStorage.removeItem('dnd_emulator_v5_started'); window.location.reload(); }}
+                className="hover:underline text-[10px]"
+            >
+              [EXIT]
+            </button>
+            <div>{loading ? loadingMsg : state.combatState.phase !== CombatPhase.NONE ? `PHASE: ${state.combatState.phase}` : "READY"}</div>
+          </div>
         </div>
         
         <Terminal messages={state.history} />
@@ -340,16 +372,15 @@ const App: React.FC = () => {
             ref={inputRef}
             autoFocus
             type="text"
-            className="flex-grow bg-transparent text-[#00ff00] text-xl focus:outline-none placeholder:opacity-20"
+            className="flex-grow bg-transparent text-[#00ff00] text-xl focus:outline-none placeholder:text-[#008800] placeholder:opacity-100"
             placeholder={
+                state.inCombat && state.combatState.phase !== CombatPhase.PARTY_TURN ? "PROCESSING ENCOUNTER FLOW..." :
                 setupStep === 'none' ? "PRESS 'G' TO GENERATE PARTY..." :
-                setupStep === 'generated' ? "PRESS 'G' TO RE-ROLL OR 'K' TO KEEP..." :
-                setupStep === 'confirmed' ? "PRESS 'S' TO START THE EXPERIENCE..." :
                 loading ? loadingMsg : "INPUT COMMAND..."
             }
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={loading}
+            disabled={loading || (state.inCombat && state.combatState.phase !== CombatPhase.PARTY_TURN)}
           />
         </form>
       </div>
