@@ -8,18 +8,6 @@ interface VisualFeedProps {
 
 export const VisualFeed: React.FC<VisualFeedProps> = ({ location, inCombat }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [telemetry, setTelemetry] = useState<string[]>([]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTelemetry(prev => {
-        const next = [...prev, Math.random().toString(16).substring(2, 10).toUpperCase()];
-        if (next.length > 5) next.shift();
-        return next;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -30,110 +18,108 @@ export const VisualFeed: React.FC<VisualFeedProps> = ({ location, inCombat }) =>
     let animationFrame: number;
 
     const draw = () => {
-      // Background and Clear
-      ctx.fillStyle = '#000';
+      // Background (Dark gray wash)
+      ctx.fillStyle = '#1a1a1a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Procedural tactical grid
-      ctx.strokeStyle = 'rgba(0, 255, 0, 0.05)';
-      ctx.lineWidth = 1;
-      const gridSize = 20;
-      for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
+      // Paper grain effect
+      for(let i=0; i<100; i++) {
+          ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`;
+          ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 1, 1);
       }
 
-      // Draw Main Visuals
-      ctx.strokeStyle = inCombat ? '#ff3333' : '#00ff00';
-      ctx.lineWidth = 2;
-      ctx.font = '10px monospace';
+      // Drawing style: Thick white charcoal lines
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = 'rgba(255,255,255,0.2)';
       
       if (inCombat) {
-        // Jagged, aggressive monster representation
-        const time = Date.now() / 200;
-        const wiggle = Math.sin(time) * 5;
+        // High-contrast monster silhouette
+        const time = Date.now() / 300;
+        const scale = 1 + Math.sin(time) * 0.05;
+        
+        ctx.save();
+        ctx.translate(canvas.width/2, canvas.height/2);
+        ctx.scale(scale, scale);
+        ctx.translate(-canvas.width/2, -canvas.height/2);
+
+        // Monstrous head
         ctx.beginPath();
-        ctx.moveTo(100 + wiggle, 140);
-        ctx.lineTo(110, 90 - wiggle);
-        ctx.lineTo(130 + wiggle, 110);
-        ctx.lineTo(150, 70 + wiggle);
-        ctx.lineTo(170 - wiggle, 110);
-        ctx.lineTo(190, 90 + wiggle);
-        ctx.lineTo(200 - wiggle, 140);
+        ctx.moveTo(100, 100);
+        ctx.quadraticCurveTo(150, 20, 200, 100);
+        ctx.lineTo(180, 140);
+        ctx.lineTo(120, 140);
         ctx.closePath();
         ctx.stroke();
-        
-        // Combat target brackets
-        ctx.strokeStyle = '#ff0000';
-        ctx.beginPath();
-        ctx.moveTo(80, 60); ctx.lineTo(100, 60); ctx.moveTo(80, 60); ctx.lineTo(80, 80);
-        ctx.moveTo(220, 60); ctx.lineTo(200, 60); ctx.moveTo(220, 60); ctx.lineTo(220, 80);
-        ctx.stroke();
-        
+
+        // Eyes
         ctx.fillStyle = '#ff0000';
-        ctx.fillText("!! THREAT DETECTED !!", 100, 170);
-      } else {
-        // Perspective corridor
         ctx.beginPath();
-        ctx.rect(80, 60, 140, 80);
-        ctx.moveTo(0, 0); ctx.lineTo(80, 60);
-        ctx.moveTo(300, 0); ctx.lineTo(220, 60);
-        ctx.moveTo(0, 200); ctx.lineTo(80, 140);
-        ctx.moveTo(300, 200); ctx.lineTo(220, 140);
+        ctx.arc(130, 80, 5, 0, Math.PI*2);
+        ctx.arc(170, 80, 5, 0, Math.PI*2);
+        ctx.fill();
+
+        // Teeth
+        ctx.beginPath();
+        for(let i=0; i<6; i++) {
+            ctx.moveTo(130 + (i*10), 110);
+            ctx.lineTo(135 + (i*10), 125);
+            ctx.lineTo(140 + (i*10), 110);
+        }
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        // Archway / Corridor sketch
+        ctx.beginPath();
+        // Foreground arch
+        ctx.strokeRect(50, 40, 200, 140);
+        // Perspective lines to middle ground
+        ctx.moveTo(50, 40); ctx.lineTo(100, 80);
+        ctx.moveTo(250, 40); ctx.lineTo(200, 80);
+        ctx.moveTo(50, 180); ctx.lineTo(100, 140);
+        ctx.moveTo(250, 180); ctx.lineTo(200, 140);
+        // Middle arch
+        ctx.strokeRect(100, 80, 100, 60);
         ctx.stroke();
         
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText("SYS: " + location.toUpperCase(), 10, 190);
+        // Stones
+        ctx.beginPath();
+        ctx.strokeRect(60, 50, 30, 15);
+        ctx.strokeRect(210, 150, 25, 12);
+        ctx.stroke();
       }
 
-      // Overlays
-      ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
-      ctx.fillRect(0, 0, canvas.width, 15);
-      ctx.fillStyle = '#00ff00';
-      ctx.fillText(`V-PRB // SENSOR_LVL: 0.98 // RNG: ${inCombat ? 'CLOSE' : 'MID'}`, 5, 12);
-
-      // Scanline static
-      if (Math.random() > 0.98) {
-        ctx.fillStyle = 'rgba(0, 255, 0, 0.05)';
-        ctx.fillRect(0, Math.random() * canvas.height, canvas.width, 2);
-      }
+      // HUD Frame (Brass corners)
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      // Top left
+      ctx.moveTo(0, 30); ctx.lineTo(0, 0); ctx.lineTo(30, 0);
+      // Top right
+      ctx.moveTo(270, 0); ctx.lineTo(300, 0); ctx.lineTo(300, 30);
+      // Bottom left
+      ctx.moveTo(0, 170); ctx.lineTo(0, 200); ctx.lineTo(30, 200);
+      // Bottom right
+      ctx.moveTo(270, 200); ctx.lineTo(300, 200); ctx.lineTo(300, 170);
+      ctx.stroke();
 
       animationFrame = requestAnimationFrame(draw);
     };
 
     draw();
     return () => cancelAnimationFrame(animationFrame);
-  }, [location, inCombat]);
+  }, [inCombat]);
 
   return (
-    <div className="border-2 border-[#00ff00] bg-black h-48 w-full relative overflow-hidden mb-2 group shadow-[0_0_20px_rgba(0,255,0,0.15)]">
-      <canvas ref={canvasRef} width={300} height={200} className="w-full h-full block image-rendering-pixelated" />
-      
-      {/* HUD Telemetry Elements */}
-      <div className="absolute top-4 left-2 text-[6px] text-[#00ff00] opacity-50 flex flex-col pointer-events-none">
-        {telemetry.map((t, i) => (
-          <span key={i}>0x{t}</span>
-        ))}
+    <div className="beveled-border !border-[#000080] !outline-[#d4af37] h-52 w-full relative overflow-hidden mb-2 shadow-2xl bg-black">
+      <canvas ref={canvasRef} width={300} height={200} className="w-full h-full block image-rendering-auto" />
+      <div className="absolute top-2 left-4 text-[#d4af37] pixel-font text-[8px] tracking-widest drop-shadow-md">
+        {inCombat ? 'SIGHTING: HOSTILE' : 'SIGHTING: CLEAR'}
       </div>
-      
-      <div className="absolute top-1 right-2 text-[8px] text-[#00ff00] animate-pulse pointer-events-none">
-        REC ●
+      <div className="absolute bottom-2 right-4 text-white/40 font-serif italic text-xs">
+        {location.toUpperCase()}
       </div>
-      
-      <div className="absolute bottom-1 right-2 text-[6px] text-[#00ff00] opacity-40 pointer-events-none">
-        COORD_Z: {Math.floor(Math.random() * 1000)}
-      </div>
-
-      {/* CRT Corner Vignette */}
-      <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_40px_rgba(0,0,0,0.8)]" />
     </div>
   );
 };

@@ -7,23 +7,28 @@ interface TerminalProps {
   messages: GameMessage[];
 }
 
-const TypewriterText: React.FC<{ text: string; type: string }> = ({ text, type }) => {
+const TypewriterText: React.FC<{ text: string; type: string; isFirstMessage: boolean }> = ({ text, type, isFirstMessage }) => {
   const [displayed, setDisplayed] = useState('');
   const [isDone, setIsDone] = useState(false);
 
   useEffect(() => {
+    // Skip typewriter for the very first system message to ensure instant visibility
+    if (isFirstMessage) {
+      setDisplayed(text);
+      setIsDone(true);
+      return;
+    }
+
     let i = 0;
     setDisplayed('');
     setIsDone(false);
 
-    // Faster typing for longer logs
-    const interval = text.length > 200 ? 5 : 15;
+    const interval = text.length > 300 ? 5 : 15;
 
     const timer = setInterval(() => {
       if (i < text.length) {
         setDisplayed(prev => prev + text.charAt(i));
-        // Only play typing sound occasionally to avoid being annoying
-        if (i % 4 === 0) audioService.playTyping();
+        if (i % 6 === 0) audioService.playTyping();
         i++;
       } else {
         setIsDone(true);
@@ -32,86 +37,82 @@ const TypewriterText: React.FC<{ text: string; type: string }> = ({ text, type }
     }, interval);
 
     return () => clearInterval(timer);
-  }, [text]);
+  }, [text, isFirstMessage]);
 
   return (
-    <div className={`whitespace-pre-wrap ${
-      type === 'player' ? 'text-white' : 
-      type === 'system' ? 'text-yellow-400 font-bold' : 
-      type === 'dice' ? 'text-cyan-400' :
-      'text-[#00ff00]'
+    <div className={`whitespace-pre-wrap pixel-font text-[12px] lg:text-[15px] line-height-pixel mb-10 tracking-wide transition-opacity duration-500 ${
+      type === 'player' ? 'text-[#8b4513] font-bold border-b-2 border-[#8b4513]/10 pb-4' : 
+      type === 'system' ? 'text-blue-900 border-l-8 border-blue-900 pl-6 py-4 bg-blue-900/5 my-6' : 
+      type === 'dice' ? 'bg-black/10 p-6 border-2 border-black/20 text-gray-700 text-[11px] italic mb-8' :
+      'text-black'
     }`}>
-      {type === 'player' && <span className="mr-2 text-[#00ff00]">&gt;</span>}
+      {type === 'player' && <span className="mr-4 text-[#d4af37] font-black">>>></span>}
       {displayed}
-      {!isDone && <span className="inline-block w-2 h-4 bg-[#00ff00] animate-pulse ml-1 align-middle" />}
+      {!isDone && <span className="inline-block w-4 h-5 bg-black/60 ml-2 align-middle animate-pulse" />}
     </div>
   );
 };
 
 export const Terminal: React.FC<TerminalProps> = ({ messages }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isAtBottom, setIsAtBottom] = useState(true);
-
-  const handleScroll = () => {
-    if (scrollRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-      const atBottom = scrollHeight - scrollTop - clientHeight < 50;
-      setIsAtBottom(atBottom);
-    }
-  };
 
   useEffect(() => {
-    if (scrollRef.current && isAtBottom) {
+    if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isAtBottom]);
+  }, [messages]);
 
   return (
-    <div className="relative flex-grow flex flex-col overflow-hidden bg-[#000500]">
-      {/* Scroll indicator for history */}
-      {!isAtBottom && (
-        <div className="absolute bottom-4 right-8 bg-[#00ff00] text-black px-2 py-1 text-xs font-bold animate-bounce z-10 shadow-lg border border-black cursor-pointer" onClick={() => {
-          if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }}>
-          ↓ NEW DATA BUFFERED ↓
-        </div>
-      )}
-      
-      <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black via-black/50 to-transparent z-10 pointer-events-none" />
+    <div className="relative flex-grow overflow-hidden flex flex-col bg-[#fdf5e6]">
+      {/* Texture Overlay for Terminal */}
+      <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')] z-10" />
       
       <div 
         ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex-grow p-4 overflow-y-auto terminal-scroll text-lg lg:text-xl space-y-4 pt-8 pb-10 scroll-smooth"
+        className="flex-grow p-10 lg:p-14 overflow-y-auto terminal-scroll scroll-smooth relative z-0"
       >
-        <div className="text-[10px] opacity-20 border-b border-[#004400] pb-2 mb-6 tracking-tighter">
-          --- AD&D 1E EMULATION INTERFACE // KERNEL: 81.12.02 ---
+        <div className="text-center mb-16 border-b-4 border-black/10 pb-8">
+          <h2 className="text-[14px] lg:text-[16px] tracking-[0.6em] text-black/80 font-bold uppercase drop-shadow-sm">
+            --- ADVENTURE CHRONICLE ---
+          </h2>
         </div>
         
         {messages.map((msg, i) => {
-          // Only use typewriter for the last message if it's from DM/System/Dice
           const isLast = i === messages.length - 1;
+          const isFirstMessage = i === 0;
           const useTypewriter = isLast && msg.type !== 'player';
 
           if (useTypewriter) {
-            return <TypewriterText key={i + msg.timestamp} text={msg.content} type={msg.type} />;
+            return (
+              <TypewriterText 
+                key={i + msg.timestamp} 
+                text={msg.content} 
+                type={msg.type} 
+                isFirstMessage={isFirstMessage} 
+              />
+            );
           }
 
           return (
-            <div key={i} className={`whitespace-pre-wrap ${
-              msg.type === 'player' ? 'text-white' : 
-              msg.type === 'system' ? 'text-yellow-400 font-bold' : 
-              msg.type === 'dice' ? 'text-cyan-400 font-mono' :
-              'text-[#00ff00]'
+            <div key={i} className={`whitespace-pre-wrap pixel-font text-[12px] lg:text-[15px] line-height-pixel mb-10 tracking-wide ${
+              msg.type === 'player' ? 'text-[#8b4513] font-bold border-b-2 border-[#8b4513]/10 pb-4' : 
+              msg.type === 'system' ? 'text-blue-900 border-l-8 border-blue-900 pl-6 py-4 bg-blue-900/5 my-6' : 
+              msg.type === 'dice' ? 'bg-black/10 p-6 border-2 border-black/20 text-gray-700 text-[11px] italic mb-8' :
+              'text-black'
             }`}>
-              {msg.type === 'player' && <span className="mr-2 text-[#00ff00]">&gt;</span>}
+              {msg.type === 'player' && <span className="mr-4 text-[#d4af37] font-black">>>></span>}
               {msg.content}
             </div>
           );
         })}
+        
+        {/* Spacer for bottom hint overlay */}
+        <div className="h-32 shrink-0" />
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black via-black/50 to-transparent z-10 pointer-events-none" />
+      {/* Visibility Gradients */}
+      <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-[#fdf5e6] to-transparent pointer-events-none z-10" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#fdf5e6] via-[#fdf5e6]/80 to-transparent pointer-events-none z-10" />
     </div>
   );
 };

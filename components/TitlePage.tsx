@@ -10,109 +10,96 @@ export const TitlePage: React.FC<TitlePageProps> = ({ onStart }) => {
   const [selectedModule, setSelectedModule] = React.useState('b2');
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black text-[#00ff00] p-4 lg:p-10 font-mono overflow-y-auto terminal-scroll">
-      <div className="max-w-5xl w-full border-2 border-[#00ff00] bg-black p-6 lg:p-10 shadow-[0_0_60px_rgba(0,255,0,0.4)] relative">
-        {/* Retro Hardware Labels */}
-        <div className="absolute top-2 left-4 text-[10px] opacity-40 font-bold tracking-widest">
-          CPU: MOS 6502 // CLOCK: 1.02 MHz // SYSTEM: OS/GYGAX-81
-        </div>
-        <div className="absolute top-2 right-4 text-[10px] opacity-40 font-bold tracking-widest">
-          STATUS: ONLINE // VOLTAGE: NOMINAL
-        </div>
-
-        <div className="text-center mb-10 mt-6">
-          <pre className="text-[10px] lg:text-[12px] leading-none mb-6 inline-block text-left animate-pulse">
-{`
-   ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄    ▄▄▄     ▄▄▄▄▄▄▄    ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ 
-  █  ▄    █       █  ▄    █  █   █   █       █  █       █       █       █
-  █ █ █   █▄▄▄▄   █ █ █   █  █▄▄▄█   █    ▄▄▄█  █▄▄▄▄   █▄▄▄▄   █    ▄▄▄█
-  █ █▄█   █▄▄▄▄█  █ █▄█   █   ▄▄▄    █   █▄▄▄    ▄▄▄▄█   ▄▄▄▄█  █   █▄▄▄ 
-  █       █▄▄▄▄   █       █  █   █   █    ▄▄▄█  █▄▄▄▄   █▄▄▄▄   █    ▄▄▄█
-  █   ▄   █       █   ▄   █  █▄▄▄█   █   █▄▄▄   █▄▄▄▄█  █▄▄▄▄█  █   █▄▄▄ 
-  █▄▄█ █▄▄█▄▄▄▄▄▄▄█▄▄█ █▄▄█  ▄▄▄▄▄▄▄ █▄▄▄▄▄▄▄█  ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ █▄▄▄▄▄▄▄█
-`}
-          </pre>
-          <h1 className="text-4xl lg:text-7xl font-bold tracking-[0.2em] mb-2 drop-shadow-[0_0_10px_#00ff00]">
-            AD&D 1E EMULATOR
-          </h1>
-          <p className="text-xs lg:text-sm opacity-60 italic tracking-wider">
-            "THE ORIGINAL EXPERIENCE, RESTORED VIA NEURAL INTERFACE."
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* About Section */}
-          <section className="border border-[#004400] p-4 bg-[#000800]">
-            <h2 className="text-lg font-bold border-b-2 border-[#00ff00] pb-1 mb-4 flex items-center">
-              <span className="mr-2">■</span> LOGICAL_CORE.EXE
+    <div className="flex flex-col items-center justify-center min-h-screen w-full bg-[#111] p-4 lg:p-10 overflow-y-auto pixel-font">
+      <div className="max-w-5xl w-full beveled-border bg-[#000080] p-1 shadow-2xl">
+        <div className="bg-[#000080] border-2 border-[#d4af37] p-6 lg:p-10">
+          
+          <div className="text-center mb-8">
+            <h2 className="text-[#d4af37] text-[10px] lg:text-[12px] tracking-widest mb-6">
+              ADVANCED DUNGEONS & DRAGONS®
             </h2>
-            <div className="text-sm leading-relaxed text-justify opacity-90">
-              <p className="mb-4 text-[#00ff00] font-bold underline">WHAT IS THIS?</p>
-              {APP_DESCRIPTION}
+            <div className="inline-block border-y-2 border-[#d4af37] py-8 mb-6 px-4 lg:px-12">
+              <h1 className="text-3xl lg:text-6xl font-bold text-white tracking-tighter drop-shadow-2xl italic leading-tight">
+                1st EDITION <br/> <span className="text-[#d4af37] not-italic">EMULATOR</span>
+              </h1>
             </div>
-            <div className="mt-4 pt-4 border-t border-[#002200]">
-              <h3 className="text-sm font-bold text-[#00ff00] mb-2 tracking-tighter">OPERATING PROTOCOL:</h3>
-              <ul className="text-[11px] space-y-1 opacity-70">
-                <li>• TEXT-BASED INTERFACE (VOICE_LINK_DISABLED)</li>
-                <li>• PROCEDURAL WORLD GENERATION</li>
-                <li>• PERSISTENT CHARACTER DATA (LOCAL)</li>
-              </ul>
-            </div>
-          </section>
+            <p className="text-[10px] text-[#d4af37] italic opacity-80">
+              "A SIMULATION OF LEGENDARY HEROISM"
+            </p>
+          </div>
 
-          {/* History/Contrast Section */}
-          <section className="border border-[#004400] p-4 bg-[#000800]">
-            <h2 className="text-lg font-bold border-b-2 border-[#00ff00] pb-1 mb-4 flex items-center">
-              <span className="mr-2">■</span> ARCHIVAL_HISTORY.DAT
-            </h2>
-            <div className="text-[12px] leading-relaxed whitespace-pre-wrap opacity-90 terminal-scroll max-h-[400px] overflow-y-auto pr-2">
-              {HISTORY_CONTEXT}
-            </div>
-          </section>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+            <div className="parchment p-6 beveled-border shadow-xl transform -rotate-1 flex flex-col h-[400px]">
+              <h3 className="text-[12px] font-bold border-b-2 border-black/20 mb-4 pb-2">
+                TOME OF KNOWLEDGE
+              </h3>
+              <div className="overflow-y-auto terminal-scroll pr-2 space-y-6 text-[8px] leading-relaxed text-black">
+                <div>
+                  <p className="font-bold underline uppercase mb-2">MISSION PROFILE</p>
+                  <p className="line-height-pixel">{APP_DESCRIPTION}</p>
+                </div>
+                
+                <div className="border-t border-black/10 pt-4">
+                  <p className="font-bold underline uppercase mb-2">THE STARK CONTRAST</p>
+                  <div className="line-height-pixel whitespace-pre-wrap italic bg-black/5 p-3">
+                    {HISTORY_CONTEXT}
+                  </div>
+                </div>
 
-          {/* Gameplay/Launch Section */}
-          <section className="border border-[#004400] p-4 bg-[#000800] flex flex-col">
-            <h2 className="text-lg font-bold border-b-2 border-[#00ff00] pb-1 mb-4 flex items-center">
-              <span className="mr-2">■</span> EXPEDITION_INIT.SH
-            </h2>
-            <div className="text-[12px] leading-relaxed mb-6 opacity-90">
-              <p className="text-[#00ff00] font-bold underline mb-2">QUICK-START GUIDE:</p>
-              {GAMEPLAY_GUIDE}
-            </div>
-            
-            <div className="mt-auto pt-6 border-t-2 border-[#00ff00]">
-              <label className="block text-[10px] font-bold mb-2 tracking-widest text-[#008800]">
-                SELECT EXPEDITION MODULE:
-              </label>
-              <div className="space-y-4">
-                <select 
-                  className="w-full bg-black border-2 border-[#00ff00] text-[#00ff00] p-3 font-bold focus:outline-none focus:bg-[#002200] appearance-none cursor-pointer"
-                  value={selectedModule}
-                  onChange={(e) => setSelectedModule(e.target.value)}
-                >
-                  <option value="b2">B2: THE KEEP ON THE BORDERLANDS</option>
-                  <option disabled>B1: IN SEARCH OF THE UNKNOWN (RECOVERY...)</option>
-                  <option disabled>G1: STEADING OF THE HILL GIANTS (LOCKED)</option>
-                  <option disabled>S1: TOMB OF HORRORS (FATAL_PERMISSION_DENIED)</option>
-                  <option disabled>--- MORE TO COME ---</option>
-                </select>
-
-                <button 
-                  onClick={() => onStart(selectedModule)}
-                  className="w-full bg-[#00ff00] text-black font-black py-4 hover:bg-[#55ff55] transition-all shadow-[0_0_20px_rgba(0,255,0,0.5)] group active:scale-95"
-                >
-                  <span className="group-hover:tracking-[0.3em] transition-all">INITIALIZE NEURAL LINK</span>
-                  <span className="ml-2 animate-ping inline-block">_</span>
-                </button>
+                <div className="border-t border-black/10 pt-4 pb-4">
+                  <p className="font-bold underline uppercase mb-2">GUIDELINES</p>
+                  <div className="line-height-pixel whitespace-pre-wrap">
+                    {GAMEPLAY_GUIDE}
+                  </div>
+                </div>
               </div>
             </div>
-          </section>
-        </div>
 
-        <div className="mt-10 flex justify-between items-center text-[9px] opacity-20 tracking-[0.5em] border-t border-[#004400] pt-4">
-          <span>(C) 1979-1981 TSR HOBBIES, INC.</span>
-          <span>EST. BANDWIDTH: 300 BAUD</span>
-          <span>PROCESSED BY GEMINI-3-PRO</span>
+            <div className="flex flex-col gap-4">
+              <div className="bg-black/40 p-6 border-2 border-[#d4af37] flex-grow flex flex-col">
+                <h3 className="text-[#d4af37] text-[10px] mb-6 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-[#d4af37] inline-block animate-pulse"></span>
+                  PLAYER START-UP
+                </h3>
+                <div className="text-white/60 text-[8px] mb-8 space-y-4 italic leading-loose">
+                  <p>• GENERATE 3D6 ATTRIBUTES IN ORDER.</p>
+                  <p>• SELECT ADVENTURE MODULE.</p>
+                  <p>• FOOLISHNESS IS FATAL.</p>
+                  <p>• GOLD = EXPERIENCE.</p>
+                </div>
+
+                <div className="mt-auto space-y-6">
+                  <div>
+                    <label className="block text-[8px] text-[#d4af37] mb-3">SELECT MODULE:</label>
+                    <div className="relative">
+                      <select 
+                        className="w-full bg-[#000040] border-2 border-[#d4af37] text-white p-3 text-[10px] focus:outline-none appearance-none cursor-pointer pr-10"
+                        value={selectedModule}
+                        onChange={(e) => setSelectedModule(e.target.value)}
+                      >
+                        <option value="b2">B2: KEEP ON THE BORDERLANDS</option>
+                        <option disabled>B1: IN SEARCH OF THE UNKNOWN</option>
+                        <option disabled>S1: TOMB OF HORRORS</option>
+                      </select>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#d4af37]">▼</div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => onStart(selectedModule)}
+                    className="w-full bg-[#d4af37] text-black font-bold py-5 text-[14px] hover:bg-white transition-all shadow-2xl active:scale-95 border-b-4 border-black italic"
+                  >
+                    BEGIN ADVENTURE
+                  </button>
+                </div>
+              </div>
+
+              <div className="text-[7px] text-gray-500 text-center opacity-60">
+                © 1977-1981 TSR HOBBIES, INC. • GEMINI-3-PRO
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
