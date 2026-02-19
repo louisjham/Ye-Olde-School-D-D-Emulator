@@ -1,0 +1,5 @@
+{
+  "name": "AD&D 1e Emulator",
+  "description": "A retro-terminal style Dungeons & Dragons emulator using 1st Edition rules and Gemini as the DM.",
+  "requestFramePermissions": []
+}
