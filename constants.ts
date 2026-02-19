@@ -6,23 +6,28 @@ export const MODULES_REGISTRY = {
   [B2_MODULE.id]: B2_MODULE
 };
 
-export const HISTORY_CONTEXT = `
-ADVANCED DUNGEONS & DRAGONS (1ST EDITION) was forged in the late 1970s by Gary Gygax. 
-Unlike modern iterations that emphasize "character builds" and superheroic resilience, 1st Edition is a game of resource management, caution, and environmental lethality.
+export const APP_DESCRIPTION = `
+This terminal emulates a 1980s-era interface to the Advanced Dungeons & Dragons (1st Edition) ruleset. 
+By leveraging a Large Language Model (Gemini), it simulates a Dungeon Master capable of interpreting natural language, enforcing Gygaxian rules, and generating an infinitely reactive world.
+`;
 
-KEY DIFFERENCES:
-- DESCENDING AC: Armor Class starts at 10 (unarmored) and goes down. 0 is great, -10 is godly.
-- THAC0: "To Hit Armor Class 0". The mathematical foundation of combat resolution.
-- DEADLY AT ZERO: When your HP hits 0, you are dead. No "death saves" in the core rules.
-- THE DM IS LAW: Rules are frameworks for the Dungeon Master, not rigid contracts.
-- EXPERIENCE: Gold is the primary source of XP. Combat is often a failure of planning.
+export const HISTORY_CONTEXT = `
+ADVANCED DUNGEONS & DRAGONS (1ST EDITION) was the definitive RPG of the late 70s and early 80s. 
+Unlike modern "Heroic" editions (3e, 4e, 5e), 1st Edition is a "Survival" game.
+
+THE STARK CONTRAST:
+- LETHALITY: In 5e, falling to 0 HP is a minor setback (Death Saves). In 1e, 0 HP is usually the end. No safety nets.
+- BALANCE: Modern D&D prioritizes "Combat Encounters" being winnable. 1e assumes the world is indifferent; if you walk into a dragon's lair at level 1, you die.
+- MECHANICS: 1e uses Descending Armor Class (AC 10 is bad, AC 0 is great) and THAC0 (To Hit Armor Class 0).
+- XP SOURCE: In 1e, you gain XP primarily from GOLD (1 GP = 1 XP). Combat is risky and often avoided to protect the haul.
+- THE DM'S ROLE: The DM is not a "narrative collaborator" but an impartial referee and world-operator.
 `;
 
 export const GAMEPLAY_GUIDE = `
-1. GATHER YOUR PARTY: Roll for attributes and select your class. 
-2. EXPLORE: Use natural language to investigate rooms, search for traps, and move.
-3. SURVIVE: Combat is tactical and turn-based. Check morale, use initiative, and keep your distance.
-4. LOOT: Secure treasure and return it to the Keep to gain levels.
+1. ATTRIBUTES: Stats are rolled 3d6 in order. You play the hand you are dealt.
+2. DISCOVERY: Searching for traps, secret doors, or hidden loot is handled by player description, not just a "Perception" roll.
+3. COMBAT: Tactical and lethal. Use 10-foot poles, hirelings, and lighting to your advantage.
+4. EQUIPMENT: Every pound counts. Encumbrance slows your movement and makes escape difficult.
 `;
 
 export const XP_TABLES: Record<CharClass, number[]> = {
